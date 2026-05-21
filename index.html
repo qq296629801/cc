@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大模型写大型项目落地方案 — 研究报告 v2.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===== CSS Custom Properties ===== */
+:root {
+  --bg-deep: #0a0e14;
+  --bg-surface: #12171f;
+  --bg-elevated: #1a1f2b;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-accent: rgba(0,229,255,0.15);
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0ab;
+  --text-muted: #5f6875;
+  --accent-cyan: #00e5ff;
+  --accent-amber: #ffb74d;
+  --accent-purple: #7c4dff;
+  --accent-green: #69f0ae;
+  --accent-red: #ff5252;
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --nav-width: 260px;
+  --content-max: 820px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --transition-base: 200ms ease;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 2rem; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 70%);
+}
+
+/* ===== Scroll Progress Bar ===== */
+#scroll-progress {
+  position: fixed; top: 0; left: 0; height: 3px; z-index: 1000;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+  width: 0%; transition: width 100ms linear;
+}
+
+/* ===== Side Navigation ===== */
+nav#sidebar {
+  position: fixed; top: 0; left: 0;
+  width: var(--nav-width); height: 100vh;
+  background: rgba(10,14,20,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border-subtle);
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
+  z-index: 100;
+  display: flex; flex-direction: column;
+}
+nav#sidebar .logo {
+  font-family: var(--font-heading);
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--accent-cyan);
+  margin-bottom: 2rem;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+nav#sidebar .logo span { color: var(--text-muted); font-weight: 400; font-size: 0.75rem; display: block; }
+nav#sidebar ul { list-style: none; flex: 1; }
+nav#sidebar ul li { margin-bottom: 2px; }
+nav#sidebar ul li a {
+  display: block; padding: 0.5rem 0.75rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem; font-weight: 400;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+  border-left: 2px solid transparent;
+}
+nav#sidebar ul li a:hover,
+nav#sidebar ul li a.active {
+  color: var(--text-primary);
+  background: rgba(0,229,255,0.06);
+  border-left-color: var(--accent-cyan);
+}
+nav#sidebar .nav-footer {
+  margin-top: auto; padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.7rem; color: var(--text-muted);
+}
+
+/* ===== Main Content ===== */
+main {
+  margin-left: var(--nav-width);
+  max-width: var(--content-max);
+  padding: 4rem 3rem 6rem;
+  position: relative; z-index: 1;
+}
+
+/* ===== Hero Section ===== */
+.hero {
+  padding: 3rem 0 5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4rem;
+}
+.hero .badge {
+  display: inline-block;
+  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500;
+  color: var(--accent-cyan);
+  background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 100px;
+  padding: 0.25rem 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.hero h1 {
+  font-family: var(--font-heading);
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero .subtitle {
+  font-size: 1.1rem; color: var(--text-secondary);
+  max-width: 600px;
+}
+.hero .meta {
+  display: flex; gap: 2rem; margin-top: 2rem;
+  font-size: 0.8rem; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.hero .meta span { display: flex; align-items: center; gap: 0.4rem; }
+.hero .meta span::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+}
+.hero .meta span:nth-child(1)::before { background: var(--accent-cyan); }
+.hero .meta span:nth-child(2)::before { background: var(--accent-amber); }
+.hero .meta span:nth-child(3)::before { background: var(--accent-purple); }
+
+/* ===== Section Styles ===== */
+section { margin-bottom: 5rem; }
+section h2 {
+  font-family: var(--font-heading);
+  font-size: 1.75rem; font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  display: flex; align-items: center; gap: 0.75rem;
+}
+section h2 .section-num {
+  font-family: var(--font-mono);
+  font-size: 0.8rem; font-weight: 500;
+  color: var(--accent-cyan);
+  background: rgba(0,229,255,0.08);
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.6rem;
+  white-space: nowrap;
+}
+section h3 {
+  font-family: var(--font-heading);
+  font-size: 1.2rem; font-weight: 600;
+  color: var(--text-primary);
+  margin: 2rem 0 1rem;
+  letter-spacing: -0.01em;
+}
+section h4 {
+  font-family: var(--font-heading);
+  font-size: 1rem; font-weight: 600;
+  color: var(--accent-amber);
+  margin: 1.5rem 0 0.75rem;
+}
+section p { color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.95rem; }
+section p strong { color: var(--text-primary); font-weight: 500; }
+
+/* ===== Table Styles ===== */
+.table-wrapper {
+  overflow-x: auto; margin: 1.5rem 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.85rem;
+}
+thead th {
+  font-family: var(--font-heading);
+  font-weight: 600; font-size: 0.78rem;
+  text-align: left; padding: 0.85rem 1rem;
+  color: var(--accent-cyan);
+  background: rgba(0,229,255,0.04);
+  border-bottom: 1px solid var(--border-subtle);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+tbody td {
+  padding: 0.75rem 1rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(255,255,255,0.02); }
+tbody td:first-child { color: var(--text-primary); font-weight: 500; }
+
+/* ===== List Styles ===== */
+.content-list {
+  list-style: none; padding: 0;
+  margin: 1rem 0;
+}
+.content-list li {
+  position: relative; padding-left: 1.5rem;
+  margin-bottom: 0.55rem;
+  color: var(--text-secondary); font-size: 0.95rem;
+}
+.content-list li::before {
+  content: '';
+  position: absolute; left: 0; top: 0.6em;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  opacity: 0.6;
+}
+
+/* ===== Code Block ===== */
+pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+/* ===== Architecture Diagram (Section 5) ===== */
+.arch-diagram {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  margin: 2rem 0;
+  position: relative;
+  overflow: hidden;
+}
+.arch-diagram::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0,229,255,0.04), transparent 70%);
+  pointer-events: none;
+}
+.arch-layers { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+.arch-node {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.5rem 1.2rem;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  position: relative;
+  transition: all var(--transition-slow);
+}
+.arch-node.central {
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.3);
+  color: var(--accent-cyan);
+  font-weight: 600; font-size: 0.8rem;
+  padding: 0.65rem 1.5rem;
+}
+.arch-node.worker {
+  background: rgba(124,77,255,0.08);
+  border: 1px solid rgba(124,77,255,0.2);
+  color: var(--accent-purple);
+}
+.arch-row {
+  display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;
+}
+.arch-connector {
+  width: 2px; height: 20px;
+  background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-purple));
+  opacity: 0.3;
+}
+.arch-node:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+
+/* ===== Context Hierarchy Diagram ===== */
+.context-layers {
+  display: flex; flex-direction: column; gap: 0;
+  margin: 1.5rem 0;
+  font-family: var(--font-mono); font-size: 0.75rem;
+}
+.context-layer {
+  padding: 0.85rem 1.25rem;
+  border-left: 3px solid;
+  background: var(--bg-surface);
+  margin-bottom: 1px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.context-layer:nth-child(1) { border-color: var(--accent-cyan); width: 100%; }
+.context-layer:nth-child(2) { border-color: var(--accent-purple); width: 85%; margin-left: auto; }
+.context-layer:nth-child(3) { border-color: var(--accent-amber); width: 70%; margin-left: auto; }
+.context-layer:nth-child(4) { border-color: var(--accent-green); width: 55%; margin-left: auto; }
+.context-layer .layer-label {
+  font-weight: 600; margin-bottom: 0.2rem;
+}
+.context-layer .layer-desc { color: var(--text-muted); font-size: 0.7rem; }
+
+/* ===== Workflow Steps ===== */
+.workflow-steps {
+  counter-reset: step;
+  list-style: none; padding: 0;
+  margin: 1.5rem 0;
+}
+.workflow-steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 1rem 1rem 1rem 3.5rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.9rem; color: var(--text-secondary);
+  transition: border-color var(--transition-base);
+}
+.workflow-steps li:hover { border-color: var(--border-accent); }
+.workflow-steps li::before {
+  content: counter(step);
+  position: absolute; left: 1rem; top: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--accent-cyan);
+  background: rgba(0,229,255,0.08);
+  width: 1.6rem; height: 1.6rem;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+/* ===== Callout / Info Card ===== */
+.callout {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-cyan);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+}
+.callout.amber { border-left-color: var(--accent-amber); }
+.callout.purple { border-left-color: var(--accent-purple); }
+.callout p { margin-bottom: 0.5rem; font-size: 0.9rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ===== Scroll Reveal ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  nav#sidebar {
+    width: 220px;
+    padding: 1.5rem 1rem;
+  }
+  nav#sidebar .logo { font-size: 0.95rem; }
+  nav#sidebar ul li a { font-size: 0.78rem; padding: 0.4rem 0.6rem; }
+  main { margin-left: 220px; padding: 3rem 2rem 5rem; }
+}
+@media (max-width: 768px) {
+  nav#sidebar {
+    position: relative; width: 100%; height: auto;
+    flex-direction: row; align-items: center;
+    padding: 1rem; gap: 1rem;
+    border-right: none; border-bottom: 1px solid var(--border-subtle);
+    overflow-x: auto; flex-wrap: nowrap;
+  }
+  nav#sidebar .logo { margin-bottom: 0; white-space: nowrap; font-size: 0.85rem; }
+  nav#sidebar .logo span { display: none; }
+  nav#sidebar ul { display: flex; gap: 0.25rem; flex: 0; }
+  nav#sidebar ul li a { white-space: nowrap; font-size: 0.7rem; padding: 0.3rem 0.5rem; border-left: none; border-bottom: 2px solid transparent; }
+  nav#sidebar ul li a:hover,
+  nav#sidebar ul li a.active { border-left: none; border-bottom-color: var(--accent-cyan); }
+  main { margin-left: 0; padding: 2rem 1.25rem 4rem; }
+  .hero h1 { font-size: 2rem; }
+  .hero .meta { flex-direction: column; gap: 0.5rem; }
+  table { font-size: 0.75rem; }
+  thead th, tbody td { padding: 0.5rem 0.6rem; }
+  .arch-row { flex-direction: column; align-items: stretch; }
+}
+
+/* ===== Print ===== */
+@media print {
+  nav#sidebar, #scroll-progress { display: none; }
+  main { margin: 0; padding: 1rem; }
+  body { background: white; color: black; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* ===== Mobile Nav Toggle ===== */
+#nav-toggle {
+  display: none;
+  position: fixed; top: 1rem; right: 1rem; z-index: 200;
+  width: 40px; height: 40px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 1.2rem; cursor: pointer;
+  align-items: center; justify-content: center;
+}
+@media (max-width: 768px) {
+  #nav-toggle { display: flex; }
+  nav#sidebar.collapsed { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="scroll-progress"></div>
+
+<button id="nav-toggle" aria-label="Toggle navigation" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">☰</button>
+
+<nav id="sidebar" class="collapsed">
+  <div class="logo">LLM × 大型项目<span>Research Report v2.0</span></div>
+  <ul>
+    <li><a href="#section-1">1. 概述</a></li>
+    <li><a href="#section-2">2. 编程范式演进</a></li>
+    <li><a href="#section-3">3. Vibe Coding vs SDD</a></li>
+    <li><a href="#section-4">4. 主流工具与平台</a></li>
+    <li><a href="#section-5">5. 架构模式</a></li>
+    <li><a href="#section-6">6. 上下文工程</a></li>
+    <li><a href="#section-7">7. 核心挑战与应对</a></li>
+    <li><a href="#section-8">8. 最佳实践与工作流</a></li>
+    <li><a href="#section-9">9. SDD 工具选型</a></li>
+    <li><a href="#section-10">10. 企业落地路径</a></li>
+    <li><a href="#section-11">11. 真实案例与效果</a></li>
+    <li><a href="#section-12">12. 参考资源</a></li>
+  </ul>
+  <div class="nav-footer">调研时间：2026年5月<br>持续更新中</div>
+</nav>
+
+<main>
+  <!-- Hero -->
+  <div class="hero reveal">
+    <div class="badge">Research Report · 2026</div>
+    <h1>大模型写大型项目落地方案</h1>
+    <p class="subtitle">从 Vibe Coding 到 Agentic Engineering，全面解析 LLM 驱动大型软件项目的工程化落地策略、架构模式与最佳实践。</p>
+    <div class="meta">
+      <span>调研时间：2026年5月</span>
+      <span>版本：v2.0</span>
+      <span>基于最新行业实践全面修订</span>
+    </div>
+  </div>
+
+  <!-- Section 1: 概述 -->
+  <section id="section-1" class="reveal">
+    <h2><span class="section-num">§1</span>概述</h2>
+    <p>用大模型（LLM）辅助甚至主导大型软件项目的开发，已从实验阶段进入<strong>工程化落地阶段</strong>。2024-2026年，编程助手、自主编码 Agent、多 Agent 协作系统等形态快速演进，覆盖了从需求分析到部署运维的软件工程全生命周期。</p>
+
+    <h4>核心价值</h4>
+    <ul class="content-list">
+      <li>开发效率提升 <strong>30%-50%</strong>（文档、测试、样板代码等场景可达 70%+）</li>
+      <li>复杂项目开发周期压缩 <strong>70% 以上</strong>（案例：原需 4-8 个月的项目，2 周交付可用版本）</li>
+      <li>降低重复性工作负担，让开发者聚焦架构决策与业务逻辑</li>
+      <li>加速原型验证与迭代周期</li>
+      <li>实现自然语言直译工程代码，打破语法记忆壁垒</li>
+    </ul>
+
+    <div class="callout">
+      <p><strong>关键前提：</strong>大模型不是替代工程师，而是增强工程师能力。<strong>人在回路（Human-in-the-Loop）</strong>是保证质量与安全的必要条件。开发者角色正在从"逐行手写代码"转型为<strong>"任务指挥官"</strong>——学会调度 AI、监督执行过程、验收交付成果。</p>
+    </div>
+  </section>
+
+  <!-- Section 2: 编程范式演进 -->
+  <section id="section-2" class="reveal">
+    <h2><span class="section-num">§2</span>编程范式演进</h2>
+
+    <h3>三代跃迁</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>时代</th><th>时间</th><th>核心特征</th><th>人机关系</th><th>典型工具</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>辅助时代</strong></td><td>2023前</td><td>行级代码补全，解决语法错误与重复编码</td><td>AI 为"得力助手"</td><td>GitHub Copilot</td></tr>
+          <tr><td><strong>对话时代</strong></td><td>2024-2025</td><td>Vibe Coding（氛围编程），自然语言描述生成完整模块</td><td>高频交互，"边聊边写"</td><td>Cursor, Windsurf</td></tr>
+          <tr><td><strong>智能体时代</strong></td><td>2026至今</td><td><strong>Agentic Engineering</strong>，AI 自主拆解、架构、编码、测试、部署</td><td>人类转为"任务指挥官"</td><td>Claude Code, Devin, OpenHands</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>智能体时代的核心特征</h3>
+    <ul class="content-list">
+      <li><strong>全流程自主闭环：</strong>AI 可独立完成 需求理解 → 技术方案输出 → 代码/单元测试/接口文档生成 → Bug 调试/结构优化 → 部署上线，支持长周期任务 7x24 小时无人值守运行</li>
+      <li><strong>自然语言直译工程代码：</strong>开发者仅需用自然语言描述业务逻辑，AI 直接转化为可运行代码</li>
+      <li><strong>多模态需求输入：</strong>支持草图、文档、语音、视频等多种模态输入直接生成系统</li>
+      <li><strong>本地安全可控架构：</strong>采用 Remote Control 模式，指令远程下发，代码/配置/业务数据全程留存在企业内网或本地环境</li>
+    </ul>
+  </section>
+
+  <!-- Section 3: Vibe Coding vs SDD -->
+  <section id="section-3" class="reveal">
+    <h2><span class="section-num">§3</span>Vibe Coding vs 规格驱动开发</h2>
+    <p>大型项目落地面临的核心选择：<strong>Vibe Coding</strong>（氛围编程）还是 <strong>Spec-Driven Development</strong>（规格驱动开发，SDD）？</p>
+
+    <h3>核心对比</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>维度</th><th>Vibe Coding</th><th>Spec-Driven Development</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>工作流</td><td>Prompt → 生成 → 迭代</td><td>指定 → 规划 → 实现 → 验证</td></tr>
+          <tr><td>核心产物</td><td>对话过程</td><td>机器可读的规格文档</td></tr>
+          <tr><td>代码来源</td><td>对话式逐步精炼</td><td>完全从规格派生</td></tr>
+          <tr><td>适合周期</td><td>&lt; 3 个月的短期项目</td><td>长期生产系统</td></tr>
+          <tr><td>适合团队</td><td>个人/小团队</td><td>多团队协作</td></tr>
+          <tr><td>风险等级</td><td>低风险内部工具</td><td>高风险/受监管环境</td></tr>
+          <tr><td>审计能力</td><td>弱，依赖对话历史</td><td>强，规格即审计记录</td></tr>
+          <tr><td>上下文漂移</td><td>容易发生</td><td>规格约束防止漂移</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>选型决策</h3>
+    <div class="callout amber">
+      <p><strong>选 Vibe Coding：</strong>短期项目（&lt;3个月）、个人开发者、实验性构建、低风险内部工具</p>
+    </div>
+    <div class="callout">
+      <p><strong>选 SDD：</strong>长期生产系统、多团队协调、受监管环境、需要可预测实现与严格审计的项目</p>
+    </div>
+
+    <h3>混合策略（推荐）</h3>
+    <ol class="workflow-steps">
+      <li><strong>探索期：</strong>用对话式发现快速映射功能范围</li>
+      <li><strong>收敛期：</strong>将验证后的需求锁定为版本控制的规格文档</li>
+      <li><strong>执行期：</strong>基于规格进行生产级开发</li>
+      <li><strong>转向 SDD 的信号：</strong>出现上下文漂移、反复回归、团队扩张、计划上线生产环境</li>
+    </ol>
+  </section>
+
+  <!-- Section 4: 主流工具与平台 -->
+  <section id="section-4" class="reveal">
+    <h2><span class="section-num">§4</span>主流工具与平台</h2>
+
+    <h3>4.1 IDE 集成助手</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>工具</th><th>特点</th><th>适用场景</th></tr></thead>
+        <tbody>
+          <tr><td><strong>GitHub Copilot</strong></td><td>生态最广，支持 VS Code/JetBrains 等，代码补全+Chat</td><td>日常编码辅助，团队标准化</td></tr>
+          <tr><td><strong>Cursor</strong></td><td>AI-native IDE，项目级上下文理解，多文件编辑</td><td>个人/小团队全流程开发</td></tr>
+          <tr><td><strong>Windsurf</strong></td><td>Cascade 多步推理，Agent 化操作</td><td>需要多步推理的复杂编码</td></tr>
+          <tr><td><strong>Codeium</strong></td><td>免费额度充裕，多语言支持</td><td>预算有限的团队试用</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>4.2 命令行 Agent</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>工具</th><th>特点</th><th>适用场景</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Aider</strong></td><td>开源，终端操作，Git 集成，支持多种模型</td><td>偏好命令行、需要精细控制的开发者</td></tr>
+          <tr><td><strong>Claude Code</strong></td><td>Anthropic 官方 CLI Agent，深度代码理解，子 Agent 委派</td><td>需要强推理能力的复杂项目</td></tr>
+          <tr><td><strong>Qoder</strong></td><td>企业级安全合规，项目级工作流编排，Agent 技能系统</td><td>企业级开发、合规要求高的场景</td></tr>
+          <tr><td><strong>OpenCode</strong></td><td>完全开源，终端优先，支持多模型厂商，双代理设计</td><td>需要开源替代方案的场景</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>4.3 自主编码 Agent</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>工具</th><th>特点</th><th>适用场景</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Devin</strong></td><td>自主规划+执行+调试，接近全自主</td><td>探索性项目、概念验证</td></tr>
+          <tr><td><strong>OpenHands</strong></td><td>开源自主 Agent，可自定义工作流</td><td>需要定制化 Agent 行为的团队</td></tr>
+          <tr><td><strong>SWE-Agent</strong></td><td>学术界驱动，聚焦 GitHub Issue 修复</td><td>缺陷修复自动化</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>4.4 多 Agent 协作框架</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>框架</th><th>特点</th></tr></thead>
+        <tbody>
+          <tr><td><strong>MetaGPT</strong></td><td>模拟软件公司角色（PM/Architect/Engineer/QA），SOP 驱动</td></tr>
+          <tr><td><strong>ChatDev</strong></td><td>多角色对话式开发流水线</td></tr>
+          <tr><td><strong>AutoGen</strong></td><td>微软开源，灵活的 Agent 编排框架</td></tr>
+          <tr><td><strong>CrewAI</strong></td><td>角色驱动的多 Agent 协作</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>4.5 辅助工具</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>工具</th><th>特点</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Claude-Mem</strong></td><td>自动捕获操作轨迹与向量数据库检索</td><td>解决跨会话上下文断裂</td></tr>
+          <tr><td><strong>AGENTS.md</strong></td><td>面向机器的结构化开发指令规范</td><td>降低 Agent 理解代码库的门槛</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section 5: 架构模式 -->
+  <section id="section-5" class="reveal">
+    <h2><span class="section-num">§5</span>架构模式</h2>
+
+    <h3>5.1 多 Agent 分工模式</h3>
+    <p><strong>中央编排 + 专项子Agent</strong></p>
+
+    <div class="arch-diagram">
+      <div class="arch-layers">
+        <div class="arch-node central">Central Orchestrator<br><small>需求理解 · 任务分配 · 质量把关</small></div>
+        <div class="arch-connector"></div>
+        <div class="arch-row">
+          <div class="arch-node worker">Architect<br><small>架构设计</small></div>
+          <div class="arch-node worker">Coder<br><small>编码</small></div>
+          <div class="arch-node worker">Tester<br><small>测试</small></div>
+          <div class="arch-node worker">Reviewer<br><small>审查</small></div>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-row">
+          <div class="arch-node worker">Security<br><small>安全防护</small></div>
+          <div class="arch-node worker">DevOps<br><small>运维</small></div>
+          <div class="arch-node worker">Doc<br><small>文档</small></div>
+          <div class="arch-node worker">Monitor<br><small>监控</small></div>
+        </div>
+      </div>
+    </div>
+
+    <h4>核心思路</h4>
+    <ul class="content-list">
+      <li>将大型项目的认知负荷分散到专用 Agent</li>
+      <li>每个 Agent 在有限上下文窗口内完成明确任务</li>
+      <li>子 Agent 处理大量细节后返回 1k-2k tokens 的压缩摘要</li>
+      <li>中央编排器不被细节淹没，保持全局视角</li>
+    </ul>
+    <div class="callout purple">
+      <p><strong>效能数据：</strong>多智能体并行推理与分工协作，复杂项目开发周期可压缩 <strong>70% 以上</strong>。</p>
+    </div>
+
+    <h3>5.2 上下文管理模式</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>策略</th><th>说明</th><th>适用场景</th></tr></thead>
+        <tbody>
+          <tr><td><strong>分层上下文</strong></td><td>项目级 → 模块级 → 函数级，按需加载</td><td>大型代码库日常开发</td></tr>
+          <tr><td><strong>语义检索（RAG）</strong></td><td>基于 Embedding 的代码检索，动态注入相关片段</td><td>跨文件依赖查询</td></tr>
+          <tr><td><strong>摘要压缩</strong></td><td>对已处理文件生成摘要，替代完整内容</td><td>长对话历史管理</td></tr>
+          <tr><td><strong>依赖追踪</strong></td><td>根据调用链自动拉取依赖代码</td><td>接口实现一致性检查</td></tr>
+          <tr><td><strong>渐进式披露</strong></td><td>仅获取当前决策所需的最小信息集</td><td>降低 token 消耗</td></tr>
+          <tr><td><strong>混合检索</strong></td><td>融合向量相似度、依赖图、历史效果指标</td><td>精准上下文定位</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.3 规格驱动开发</h3>
+    <pre>需求文档 → 技术规格 → 接口契约 → 实现 → 验证
+    ↑                                    │
+    └──────── 反馈修正 ←─────────────────┘</pre>
+    <p><strong>原则：</strong>先定规格，再生成代码。规格是 LLM 的"护栏"，防止自由生成偏离预期。</p>
+    <ul class="content-list">
+      <li>规格文档纳入版本控制</li>
+      <li>活规格（Living Specs）自动与代码变更同步</li>
+      <li>用可执行契约代替冗长自然语言描述</li>
+      <li>多 Agent 对统一规格源进行编排</li>
+    </ul>
+  </section>
+
+  <!-- Section 6: 上下文工程 -->
+  <section id="section-6" class="reveal">
+    <h2><span class="section-num">§6</span>上下文工程</h2>
+    <p>上下文工程是 2026 年大模型开发大型项目的<strong>核心学科</strong>，定义为"在 LLM 推理期间策划和维护最优 token 集合的策略"。</p>
+
+    <h3>6.1 核心组件</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>组件</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><strong>持久基线</strong></td><td>固定指令，建立跨所有会话的行为规则、安全要求和技术约束</td></tr>
+          <tr><td><strong>自动投递</strong></td><td>监控活动文件、最近提交、光标位置，动态注入相关文档</td></tr>
+          <tr><td><strong>持续验证</strong></td><td>反馈机制，验证文档准确性与实际代码库一致，防止信息衰减</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>6.4 上下文层次结构</h3>
+    <div class="context-layers">
+      <div class="context-layer">
+        <div class="layer-label">组织级上下文</div>
+        <div class="layer-desc">团队规范、安全策略、合规要求</div>
+      </div>
+      <div class="context-layer">
+        <div class="layer-label">仓库级上下文</div>
+        <div class="layer-desc">架构决策、模块关系、技术栈</div>
+      </div>
+      <div class="context-layer">
+        <div class="layer-label">组件级上下文</div>
+        <div class="layer-desc">接口契约、数据模型、依赖图</div>
+      </div>
+      <div class="context-layer">
+        <div class="layer-label">函数级上下文</div>
+        <div class="layer-desc">具体实现、测试用例、注释</div>
+      </div>
+    </div>
+
+    <h3>6.5 实施最佳实践</h3>
+    <ul class="content-list">
+      <li>审计历史代码审查，找出频繁执行的规范后再起草文档</li>
+      <li>按组织、仓库、组件三级分层组织参考材料</li>
+      <li>为文档分配专人维护，防止文档漂移</li>
+      <li>起步时建立三份基础指南：风格规范、系统设计、团队流程</li>
+      <li>试运行度量工程师手动补充项目背景的频率</li>
+      <li>在部署流水线中嵌入自动验证，确认引用的函数仍可编译</li>
+      <li>季度审查刷新过时章节</li>
+    </ul>
+  </section>
+
+  <!-- Section 7: 核心挑战与应对 -->
+  <section id="section-7" class="reveal">
+    <h2><span class="section-num">§7</span>核心挑战与应对方案</h2>
+
+    <h3>7.1 上下文窗口限制</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>挑战</th><th>方案</th></tr></thead>
+        <tbody>
+          <tr><td>大型项目代码量远超上下文窗口</td><td>语义检索 + 分层加载 + 摘要压缩 + 按需获取</td></tr>
+          <tr><td>跨文件依赖关系丢失</td><td>依赖图分析 + 自动关联上下文注入 + 混合检索</td></tr>
+          <tr><td>长对话历史溢出</td><td>滑动窗口 + 关键决策摘要 + 外部记忆系统</td></tr>
+          <tr><td>Token 消耗过高</td><td>渐进式披露 + 分层上下文 + 实时优化排除敏感数据</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>7.2 代码一致性</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>挑战</th><th>方案</th></tr></thead>
+        <tbody>
+          <tr><td>多次生成风格不一致</td><td>统一 Style Guide + Lint 规则前置 + 目录级 Prompt 文件</td></tr>
+          <tr><td>接口定义与实现不匹配</td><td>接口契约先行 + 类型检查自动化 + 规格约束生成</td></tr>
+          <tr><td>重复/矛盾逻辑</td><td>代码审查 Agent + 去重检测 + 活规格双向同步</td></tr>
+          <tr><td>上下文漂移</td><td>规格锁定 + 版本控制 + 自动同步验证</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>7.3 测试与调试</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>挑战</th><th>方案</th></tr></thead>
+        <tbody>
+          <tr><td>生成的代码可能有隐性 Bug</td><td>测试生成 Agent + 变异测试 + 分步推理验证</td></tr>
+          <tr><td>调试需要理解执行流程</td><td>调试 Agent 分析堆栈 + 执行轨迹追踪</td></tr>
+          <tr><td>回归风险</td><td>CI/CD 集成 + 自动回归测试套件 + 质量门控</td></tr>
+          <tr><td>测试覆盖不充分</td><td>LLM 生成基础用例 + 人工补充边界用例 + 变异测试</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>7.4 安全与合规</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>挑战</th><th>方案</th></tr></thead>
+        <tbody>
+          <tr><td>代码注入/漏洞</td><td>安全扫描 Agent + SAST 集成 + 安全构造</td></tr>
+          <tr><td>许可证合规</td><td>依赖扫描 + 许可证审查 + 供应链安全</td></tr>
+          <tr><td>数据隐私</td><td>本地/私有化部署 + 敏感信息过滤 + 上下文排除</td></tr>
+          <tr><td>代码溯源</td><td>生成标记 + 审计日志 + 规格到代码的映射</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section 8: 最佳实践 -->
+  <section id="section-8" class="reveal">
+    <h2><span class="section-num">§8</span>最佳实践与工作流</h2>
+
+    <h3>8.1 推荐工作流</h3>
+    <ol class="workflow-steps">
+      <li><strong>需求分析</strong> — LLM 辅助需求拆解、用户故事生成</li>
+      <li><strong>架构设计</strong> — LLM 辅助技术选型、模块划分、接口设计</li>
+      <li><strong>规格编写</strong> — 人工审核的接口契约与功能规格（版本控制）</li>
+      <li><strong>代码生成</strong> — LLM 按模块逐步生成，人工审查关键路径</li>
+      <li><strong>测试生成</strong> — LLM 生成单元/集成测试，人工补充边界用例</li>
+      <li><strong>代码审查</strong> — LLM 自动审查 + 人工复核</li>
+      <li><strong>持续集成</strong> — CI/CD 流水线自动验证（质量门控）</li>
+      <li><strong>文档生成</strong> — LLM 生成 API 文档、架构文档</li>
+      <li><strong>迭代优化</strong> — 基于反馈循环改进</li>
+    </ol>
+
+    <h3>8.2 关键原则</h3>
+    <ul class="content-list">
+      <li><strong>Human-in-the-Loop：</strong>架构决策、安全审查、最终质量保证必须有人工介入</li>
+      <li><strong>Spec First：</strong>规格先于代码，LLM 在规格约束下生成</li>
+      <li><strong>Iterative Refinement：</strong>迭代优于一次生成完美</li>
+      <li><strong>Small Batches：</strong>每次让 LLM 处理一个小而明确的任务</li>
+      <li><strong>Verify Everything：</strong>所有 LLM 生成的内容都需验证</li>
+      <li><strong>Guardrails：</strong>用 Lint、类型系统、测试套件作为护栏</li>
+      <li><strong>Context as Resource：</strong>将 token 窗口视为有限资源，聚焦高价值输入</li>
+      <li><strong>Delegate, Don't Dump：</strong>委派子任务给专用 Agent，不要将所有上下文塞入主会话</li>
+    </ul>
+
+    <h3>8.3 项目配置建议</h3>
+    <pre>project/
+├── .ai/
+│   ├── SPEC.md          # 项目规格与约束
+│   ├── ARCHITECTURE.md  # 架构决策记录
+│   ├── CONVENTIONS.md   # 编码规范
+│   ├── CONTEXT.md       # 当前开发上下文摘要
+│   └── AGENTS.md        # Agent 行为指令规范
+├── specs/
+│   ├── api/             # 接口契约规格
+│   ├── features/        # 功能规格文档
+│   └── constraints/     # 约束与规则
+├── src/
+├── tests/
+└── ...</pre>
+  </section>
+
+  <!-- Section 9: SDD 工具选型 -->
+  <section id="section-9" class="reveal">
+    <h2><span class="section-num">§9</span>规格驱动开发工具选型</h2>
+
+    <h3>9.1 SDD 工具对比</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>工具</th><th>特点</th><th>适合场景</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Intent</strong></td><td>双向文档同步 + 并行虚拟 Worker + 隔离 VCS 分支 + 支持外部 AI 模型</td><td>跨仓库协调的大型项目</td></tr>
+          <tr><td><strong>Kiro</strong></td><td>EARS 语法严格验收标准 + Amazon 云环境 + 自动文件触发</td><td>AWS 生态内的严格合规项目</td></tr>
+          <tr><td><strong>GitHub Spec Kit</strong></td><td>Agent 无关的 CLI 框架 + 版本控制 Markdown 规格</td><td>命令行优先的轻量团队</td></tr>
+          <tr><td><strong>OpenSpec</strong></td><td>审批门控 + 变更追踪标记 + 适配遗留系统</td><td>成熟系统的渐进改造</td></tr>
+          <tr><td><strong>BMAD-METHOD</strong></td><td>生命周期不同阶段的虚拟角色 + 文件交接保持角色边界</td><td>需要全面生命周期文档的项目</td></tr>
+          <tr><td><strong>Cursor Rules</strong></td><td>目录级 Prompt 文件 + 轻量规范执行 + 单编辑器内</td><td>轻量规范的快速执行</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>9.2 选型维度</h3>
+    <ul class="content-list">
+      <li><strong>文档同步需求：</strong>是否需要活规格自动双向同步</li>
+      <li><strong>Agent 并发需求：</strong>是否需要多个 Agent 同时工作</li>
+      <li><strong>部署偏好：</strong>云托管 vs 本地 vs CLI</li>
+      <li><strong>遗留系统兼容：</strong>是否需要适配已有代码库</li>
+      <li><strong>合规要求：</strong>审批门控、变更追踪的严格程度</li>
+    </ul>
+  </section>
+
+  <!-- Section 10: 企业落地路径 -->
+  <section id="section-10" class="reveal">
+    <h2><span class="section-num">§10</span>企业落地路径</h2>
+
+    <h3>阶段一：试点验证（1-3 个月）</h3>
+    <ul class="content-list">
+      <li>选择 1-2 个非核心模块作为试点</li>
+      <li>部署 IDE 集成助手（Copilot / Cursor）</li>
+      <li>建立基线指标：代码产出、Bug 率、开发周期</li>
+      <li>制定使用规范与安全策略</li>
+      <li>评估上下文工程需求</li>
+    </ul>
+
+    <h3>阶段二：团队推广（3-6 个月）</h3>
+    <ul class="content-list">
+      <li>标准化工具链与工作流</li>
+      <li>引入 Agent 辅助测试生成、代码审查</li>
+      <li>建立知识库与 Prompt 模板库</li>
+      <li>部署上下文工程基础设施</li>
+      <li>培训与最佳实践分享</li>
+      <li>建立规格驱动开发流程</li>
+    </ul>
+
+    <h3>阶段三：深度集成（6-12 个月）</h3>
+    <ul class="content-list">
+      <li>多 Agent 协作开发流水线</li>
+      <li>CI/CD 深度集成 LLM 能力（质量门控、自动验证）</li>
+      <li>私有化部署与数据安全合规</li>
+      <li>定制化微调与领域知识注入</li>
+      <li>行业标准化模板沉淀</li>
+      <li>外部记忆系统与跨会话上下文管理</li>
+    </ul>
+
+    <h3>成功要素</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>要素</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><strong>治理体系</strong></td><td>明确使用边界、审批流程、责任归属</td></tr>
+          <tr><td><strong>场景聚焦</strong></td><td>选择高 ROI 场景优先落地</td></tr>
+          <tr><td><strong>工具适配</strong></td><td>与现有开发流程无缝集成</td></tr>
+          <tr><td><strong>持续度量</strong></td><td>量化效率提升与质量变化</td></tr>
+          <tr><td><strong>人才培养</strong></td><td>提升 Prompt 工程与 AI 协作能力</td></tr>
+          <tr><td><strong>上下文工程</strong></td><td>建立系统化的上下文管理体系</td></tr>
+          <tr><td><strong>规格先行</strong></td><td>从 Vibe Coding 渐进转向 SDD</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section 11: 真实案例 -->
+  <section id="section-11" class="reveal">
+    <h2><span class="section-num">§11</span>真实案例与效果</h2>
+
+    <div class="callout purple">
+      <p><strong>11.1 多 Agent 协同开发：</strong>复杂企业级应用，原需 4-8 个月，采用中央编排 + 专项子 Agent 架构后 <strong>2 周交付可用版本</strong>，周期压缩 70%+</p>
+    </div>
+    <div class="callout">
+      <p><strong>11.2 企业建模：</strong>复杂企业级建模任务，开发时间减少 <strong>40%</strong>，质量标准保持</p>
+    </div>
+    <div class="callout amber">
+      <p><strong>11.3 项目管理辅助：</strong>LLM4PM 显著改善项目规划与需求获取效率</p>
+    </div>
+    <div class="callout purple">
+      <p><strong>11.4 社会价值应用：</strong>经济与社会影响力应用开发，生产力提升 <strong>30%-50%</strong></p>
+    </div>
+    <div class="callout">
+      <p><strong>11.5 本地安全可控架构：</strong>Remote Control 模式，指令远程下发，代码/数据全程留存本地，兼顾效率与安全合规</p>
+    </div>
+  </section>
+
+  <!-- Section 12: 参考资源 -->
+  <section id="section-12" class="reveal">
+    <h2><span class="section-num">§12</span>参考资源</h2>
+
+    <h3>学术论文</h3>
+    <ul class="content-list">
+      <li>LLM-Based Multi-Agent Systems for Software Engineering</li>
+      <li>LLM4PM: A Case Study on Using LLMs for Project Management</li>
+      <li>LLMs Choose the Right Stack: From Patterns to Tools</li>
+      <li>A Survey on Large Language Models for Code Generation</li>
+      <li>Sustainable Code Generation Using Large Language Models</li>
+    </ul>
+
+    <h3>行业文章</h3>
+    <ul class="content-list">
+      <li>Vibe Coding vs Spec-Driven Development (2026)</li>
+      <li>Effective Context Engineering for AI Agents — Anthropic</li>
+      <li>What is Context Engineering? — Packmind</li>
+      <li>AI编程最新范式：2026开发全链路重构</li>
+      <li>6 Best Spec-Driven Development Tools for AI Coding in 2026</li>
+      <li>My LLM Coding Workflow Going Into 2026 — Addy Osmani</li>
+    </ul>
+
+    <h3>开源项目</h3>
+    <ul class="content-list">
+      <li><strong>MetaGPT</strong> — 多 Agent 软件开发框架</li>
+      <li><strong>AutoGen</strong> — 微软多 Agent 编排框架</li>
+      <li><strong>OpenHands</strong> — 开源自主编码 Agent</li>
+      <li><strong>Awesome-LLM-Long-Context-Modeling</strong> — 长上下文建模研究</li>
+    </ul>
+
+    <h3>工具官网</h3>
+    <ul class="content-list">
+      <li>GitHub Copilot · Cursor · Aider · Devin · OpenHands</li>
+    </ul>
+  </section>
+
+  <footer style="text-align:center; padding:3rem 0 2rem; border-top:1px solid var(--border-subtle); margin-top:4rem;">
+    <p style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted);">
+      本文档基于 2024-2026 年公开资料与行业实践整理，持续更新中。<br>
+      Generated with research dedication · v2.0 · 2026年5月
+    </p>
+  </footer>
+</main>
+
+<script>
+// Scroll progress bar
+const progressBar = document.getElementById('scroll-progress');
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  progressBar.style.width = progress + '%';
+});
+
+// Scroll reveal animation
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Active nav link on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav#sidebar ul li a');
+
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(section => {
+    const sectionTop = section.offsetTop - 120;
+    if (window.scrollY >= sectionTop) {
+      current = section.getAttribute('id');
+    }
+  });
+  navLinks.forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === '#' + current) {
+      link.classList.add('active');
+    }
+  });
+});
+
+// Initial reveal for elements already in view
+document.querySelectorAll('.reveal').forEach(el => {
+  const rect = el.getBoundingClientRect();
+  if (rect.top < window.innerHeight) el.classList.add('visible');
+});
+</script>
+
+</body>
+</html>
